@@ -49,3 +49,90 @@ Leader-follower implementation. Follower becomes the leader if leader fails. Thi
 Leader-follower is done for applications that have a higher read load. The leader has a bunch of followers. When the leader gets a request, it bumps the request down to the followers that are designed for reading. For followers, keeping updated with the leader is easy. If you want to write something to the database, do so via the leader. This allows consistency. If followers are allowed to write, how do you keep everything in sync? You would not be able to ensure that followers don't have conflicting writes. So, writing gets done by the leader, and all reads are processed by the followers.
 
 A clear line of succession is needed. In the case of a leader failure, you need to have another leader waiting or a plan to promote one of your followers to be the leader. In this scenario, that follower moves up and now all of the other followers follow this new leader.
+
+For applications that have a higher write load, there is no good way to scale up a relational database. However, this is attempted by sharding. In this scenario, there is one router which points to different database buckets. For example, you could have a bucket for users A-C, another bucket for users D-F, and so on. Instead of sharding alphabetically, you could also shard by location. Facebook shards by location because you can assume that most people talk to people who are near them. Sharding also employs master-slave replication.
+
+If you have a high write load across shards, you have reached the point where you need to stop using a relational database.
+
+Sharding can be spread across many data centers. A data center is basically a giant building with a bunch of servers, where some of those servers are your database machines. When you have data centers in different places, you need to ensure that the data between all data centers is consistent.
+
+Think about your data model. Is there a natural aggregation? How can you denormalize to make the most common queries easy and fast? You need to make important design decisions upfront. Think, how am I usually going to be querying this?
+
+Most startups use a relational database because it is easy to change, as opposed to starting with NoSQL which is significantly harder to change.
+
+If you have a non-normalized database, then every time that you write, you need to update it in all places. Ideally, you are controlling this in the application layer.
+
+### CDN
+
+A CDN is a giant data center that is designed to send big files to users as fast as possible. Cloudfront, for example, has data centers everywhere that are very close to end users. A CDN can serve big files to users very quickly, and is significantly faster than serving the files up from your server.
+
+If your frontend is moving slowly, a CDN will help speed up the process. Typically, your browser is making too many requests. If your JavaScript / CSS is loaded from your web server, that is inefficient and very slow. You want to load what you can from a CDN and minimize every request that is made.
+
+In virtually every production application, the JavaScript gets concatenated together and put into one giant file that you feed to a CDN. You feed another giant CSS file to the CDN as well. This way, the user makes far fewer requests: one to your server for the raw HTML, one for the JavaScript, one for the CSS, and maybe another for the media. Ideally, a CDN will store all content that is not raw HTML.
+
+### Caching
+
+Examples: Redis, memcached
+
+Caching is really important to prevent databases from being smashed. Databases are largely slow, and ideally we would have a cache that is optimized for speed. The cache is generally stored in memory and isn't persistent (similar to RAM).
+
+A cache is simply a Key-Value store. What you store in the cache is the output of common queries or static data. Anything that needs to hit the database goes to the caching layer first. All user data, session data, and data related to the most common users is stored in the cache. This way, when a user logs in, you can validate them without hitting the database.
+
+An example of a common query for Twitter, for example, would be a celebrity's tweets. Celebrity tweets live in the cache because so many people try to read them. An example of an expensive query would be trending hashtags. You would need to read every hashtag of every tweet. ASIDE - Elasticsearch is a specialized database optimized for searching.
+
+If something takes two minutes to compute, you don't want the user to have to wait for two minutes. You should cache the result of the value and then run recomputation in the background, which updates the cache every hour or so.
+
+It is your responsibility to tell the cache when things are invalidated / expired. You might invalidate the celebrity tweets in the cache every time you get a write to a celebrity's tweets.
+
+In addition to using a CDN, caching also makes a website faster.
+
+### Application Server
+
+The difference between Heroku and AWS is that Heroku is a PaaS - Platform as a Service, and AWS is IaaS - Infrastructure as a Service.
+
+PaaS figures everything out for you, does bundle install, gems, etc. It is less configurable and more expensive. Heroku does a lot of magic for you, but you would not use it for a large-scale application because it is too expensive per CPU cycle. Heroku is ~2x more expensive than AWS.
+
+AWS provides you VMs that have a certain amount of memory / CPU, and these VMs can run whatever code you want. You have to configure them and do all the "magic" that Heroku takes care of for you. Big companies typically hire DevOps to make sure all of this stuff works, ensure each piece talks to each other in the proper way, and manage your servers.
+
+Before AWS you would have to buy your own server, bring it to your house and plug it in. That server would then run your app. Netflix runs its own data centers, and doesn't use AWS. Very few companies do this. Most just use AWS.
+
+AWS has data center failover.
+
+You will have many application servers, and each server runs the same code, and talks to the cache + database.
+
+------
+Services vs. Monolith
+
+There are two different types of architecture when it comes to the application server component: Service-oriented Architecture (SOA; now known as microservices) and Monolith
+
+Monolith - one giant Rails app that does everything. If something breaks, anywhere, the whole thing breaks.
+
+Microservices - You might have a user auth microservice (which is its own app), a tweets microservice, etc. These two talk to each other on an internal network via API. They are two different Rails apps that talk internally. This way, if the tweets app breaks, the user auth app does not. It enables modularity on the application level. User auth has its own API, tweets has its own API, and no one can talk to user auth except tweets.
+
+Example of service breakdown: Uber
+
+Routing service
+
+Dispatch service
+
+Payment service
+
+Reviewing service
+
+User auth service
+
+If you work on routing, you don't need to know how dispatch or payment processing works under the hood. You just need to know how to call the API.
+
+There is a failover for each service. Microservices is similar to the idea of OOP, namely the separation of concerns.
+
+Pros / Cons
+
+Failures can be isolated more easily with SOA. It is extremely difficult to do this with a monolith architecture.
+
+Easy to divide among teams. One team can keep their codebase small and understandable.
+
+Microservices can be written in various languages and they just talk over an API. Monolith is written in only one language.
+
+With microservices, it is easy to do small refactors.
+
+As a downside, there is a bit of overhead in having the services talk to one another.
