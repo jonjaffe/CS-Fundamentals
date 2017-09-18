@@ -136,3 +136,23 @@ Microservices can be written in various languages and they just talk over an API
 With microservices, it is easy to do small refactors.
 
 As a downside, there is a bit of overhead in having the services talk to one another.
+
+### Client vs Server
+
+TCP – ex: this data must get to the user. TCP requests to talk to the server; the server obliges. They open a connection. Once the connection is open, I send packets to the server. Server confirms it received the packets, and the process repeats. The packets are all numbered, and the server makes sure it received the packets in the right order.
+
+TCP has a lot of overhead because of the acknowledgement, verification of things going in the right order
+
+HTTP is built on UDP. HTTP uses TCP. When you ask a server for  a get request, you first send a message to the server to talk. The server asks what you want. You say I want this page. Server says I got your packet that says you want this page, here’s the page. You say I got it, server says I’m done, connection closed.
+
+UDP AKA best effort. I send you a packet and you either get it or you don't with no guarantee about ordering. UDP is faster, but TCP is more secure, and you know how things are ordered.
+
+Example: every 5 seconds an Uber driver sends up location details to the Uber sever. Uber records info on its server, then sends you the most updated info. This needs to be really fast. You should use UDP.
+
+You would use TCP if you want to ensure that a packet does not get dropped. HTTP assumes you need TCP.
+
+Is it ok to let the client and server become inconsistent? Possibly yes, if an "instant" feeling is desired. On the contrary, Google Docs cannot allow inconsistency because each user's document is the same.
+
+### Load Balancer
+
+Balances load. You do not want all your users going to one server; you want to equally distribute the load amongst all of your servers. You have multiple load balancers in place to ensure failover, and you also put a load balancer between the caching layer and your databases.
