@@ -16,7 +16,7 @@ Adding an event handler to each LI is tedious and potentially causes performance
 
 Instead, by using event delegation, you can add a single handler to the parent element by using the target element. The event will bubble to the parent, and then you can use the reference to the clicked node to compare.
 
-```
+```javascript
 document.getElementById("parent-list").addEventListener("click", function(e) {
 	if(e.target && e.target.nodeName == "LI") {
 		console.log("List item ", e.target.id.replace("post-", ""), " was clicked!");
